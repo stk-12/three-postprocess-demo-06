@@ -3,7 +3,12 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
+
 import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass.js';
+
+import { LuminosityShader } from 'three/examples/jsm/shaders/LuminosityShader.js';
+import { SobelOperatorShader } from 'three/examples/jsm/shaders/SobelOperatorShader.js';
 
 import GUI from "lil-gui";
 
@@ -31,12 +36,24 @@ class Main {
 
     this.gui = new GUI();
 
+    this.effectObj = {
+      glitch: true,
+      sobel: true,
+      dotscreen: true,
+      rgbshift: true,
+      bloom: false,
+    }
+
     // post processing
     this.composer = null;
     this.effectAfterimage = null;
+    this.effectSobel = null;
 
     this._init();
     this._setComposer();
+    this._setEffectAfterimage();
+    this._setEffectSobel();
+
 
     this._setGUI();
     this._update();
@@ -62,6 +79,22 @@ class Main {
   _setGUI() {
     console.log(this.effectAfterimage);
     this.gui.add(this.effectAfterimage.uniforms.damp, 'value', 0, 1).name('残像');
+
+    this.gui.add(this.effectObj, 'sobel').name('エッジ検出');
+
+    this.gui.onChange((e) => {
+
+      const guiProperty = e.property;
+
+      if(guiProperty === 'sobel') {
+        if(e.value) {
+          this._onEffectSobel();
+        } else {
+          this._offEffectSobel();
+        }
+      }
+
+    })
   }
 
   _setLight() {
@@ -74,9 +107,32 @@ class Main {
     this.composer = new EffectComposer(this.renderer);
     const renderPass = new RenderPass(this.scene, this.camera);
     this.composer.addPass(renderPass);
+  }
 
+  _setEffectAfterimage() {
     this.effectAfterimage = new AfterimagePass();
-		this.composer.addPass( this.effectAfterimage );
+    this.composer.addPass(this.effectAfterimage);
+  }
+
+  _setEffectSobel() {
+    const effectGrayScale = new ShaderPass(LuminosityShader);
+    this.composer.addPass(effectGrayScale);
+  
+    this.effectSobel = new ShaderPass(SobelOperatorShader);
+    this.effectSobel.uniforms['resolution'].value.x = window.innerWidth * window.devicePixelRatio * 0.1;
+    this.effectSobel.uniforms['resolution'].value.y = window.innerHeight * window.devicePixelRatio * 0.1;
+    if(this.effectObj.sobel === false) {
+      this._offEffectSobel();
+    } else {
+      this._onEffectSobel();
+    }
+    this.composer.addPass(this.effectSobel);
+  }
+  _onEffectSobel() {
+    this.effectSobel.enabled = true;
+  }
+  _offEffectSobel() {
+    this.effectSobel.enabled = false;
   }
 
   _addMesh() {
