@@ -5,6 +5,8 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass.js';
 
+import GUI from "lil-gui";
+
 class Main {
   constructor() {
     this.viewport = {
@@ -27,12 +29,16 @@ class Main {
 
     this.controls = null;
 
+    this.gui = new GUI();
+
     // post processing
     this.composer = null;
+    this.effectAfterimage = null;
 
     this._init();
     this._setComposer();
 
+    this._setGUI();
     this._update();
     this._addEvent();
   }
@@ -53,6 +59,11 @@ class Main {
     this.controls.enableDamping = true;
   }
 
+  _setGUI() {
+    console.log(this.effectAfterimage);
+    this.gui.add(this.effectAfterimage.uniforms.damp, 'value', 0, 1).name('残像');
+  }
+
   _setLight() {
     const light = new THREE.DirectionalLight(0xffffff, 1.5);
     light.position.set(1, 1, 1);
@@ -64,8 +75,8 @@ class Main {
     const renderPass = new RenderPass(this.scene, this.camera);
     this.composer.addPass(renderPass);
 
-    const afterimagePass = new AfterimagePass();
-		this.composer.addPass( afterimagePass );
+    this.effectAfterimage = new AfterimagePass();
+		this.composer.addPass( this.effectAfterimage );
   }
 
   _addMesh() {
@@ -73,7 +84,6 @@ class Main {
     const material = new THREE.MeshStandardMaterial({color: 0x444444});
     this.mesh = new THREE.Mesh(geometry, material);
     this.scene.add(this.mesh);
-
   }
 
   _init() {
